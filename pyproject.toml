@@ -1,0 +1,35 @@
+[project]
+name = "traderai-workspace"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["apps/api", "apps/worker", "apps/market-data", "packages/python/traderai-domain"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["app", "worker", "market_data", "traderai_domain"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+"infrastructure/scripts/wait-for-health.py" = ["S310"]
+
+[tool.pytest.ini_options]
+pythonpath = ["apps/api", "apps/worker", "apps/market-data", "packages/python/traderai-domain/src"]
+
+[[tool.mypy.overrides]]
+module = ["celery", "celery.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["worker.tasks.health"]
+disable_error_code = ["untyped-decorator"]

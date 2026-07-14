@@ -1,0 +1,39 @@
+name: traderai
+services:
+  postgres:
+    image: postgres:18.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-traderai}
+      POSTGRES_USER: ${POSTGRES_USER:-traderai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-traderai_local_password}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes: [traderai_postgres_data:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"], interval: 5s, timeout: 3s, retries: 10 }
+    networks: [traderai_local]
+  redis:
+    image: redis:8.6-alpine
+    ports: ["127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10 }
+    networks: [traderai_local]
+  api:
+    build: { context: ., dockerfile: infrastructure/docker/api.Dockerfile }
+    environment: [DATABASE_URL=postgresql+psycopg://traderai:traderai_local_password@postgres:5432/traderai, REDIS_URL=redis://redis:6379/0]
+    ports: ["127.0.0.1:${API_HOST_PORT:-8000}:8000"]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy } }
+    healthcheck: { test: ["CMD", "python", "infrastructure/scripts/wait-for-health.py", "http://localhost:8000/api/v1/health"], interval: 10s, timeout: 3s, retries: 10 }
+    networks: [traderai_local]
+  worker:
+    build: { context: ., dockerfile: infrastructure/docker/worker.Dockerfile }
+    environment: [REDIS_URL=redis://redis:6379/0]
+    depends_on: { redis: { condition: service_healthy } }
+    networks: [traderai_local]
+  market-data:
+    build: { context: ., dockerfile: infrastructure/docker/market-data.Dockerfile }
+    environment: [MARKET_DATA_MODE=fake]
+    networks: [traderai_local]
+volumes:
+  traderai_postgres_data:
+networks:
+  traderai_local:
+    name: traderai_local

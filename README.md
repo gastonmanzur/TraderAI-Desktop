@@ -1,44 +1,50 @@
 # TraderAI Desktop
 
-Plataforma de escritorio para Windows que recibe señales de TradingView, las evalúa con reglas cuantitativas y límites de riesgo, ejecuta paper trading en un backend permanente y presenta resultados auditables.
+Scaffold reproducible for TraderAI Desktop (Etapa 1 / E1-P01). This repository currently contains only local infrastructure, health checks, contracts, and a Tauri/React desktop shell. It does **not** implement authentication, real market connectivity, risk engines, AI decisions, or real trading.
 
-> **MODO PAPER TRADING**  
-> No se ejecutan operaciones con dinero real.
+## Toolchains
 
-## Estado
+- Node `24` (see `.node-version`) with pnpm `11.0.0`.
+- Python `3.13.14` (see `.python-version`) with uv.
+- Rust stable `1.97.0` (see `rust-toolchain.toml`).
+- Docker/Compose for PostgreSQL and Redis.
 
-El proyecto está en **Etapa 0 — Descubrimiento y especificación**. En este punto existen documentos de producto e ingeniería; todavía no hay código productivo ni infraestructura desplegada. Consultar [STATUS.md](STATUS.md) y [docs/CODEX_IMPLEMENTATION_PLAN.md](docs/CODEX_IMPLEMENTATION_PLAN.md).
+The verification environment used for this scaffold had Node 20.20.2, Python 3.12.13, Rust 1.89.0, and no Docker, so frozen installs/builds requiring the pinned toolchains or Docker are documented as blocked locally.
 
-## Decisión de producto
+## Setup
 
-El primer lanzamiento será una herramienta privada de validación, no un producto comercial ni una promesa de rentabilidad. El objetivo es demostrar que el pipeline de datos y paper trading es íntegro, reproducible y operable con la PC apagada. La IA queda bloqueada hasta disponer de un mínimo de 500 operaciones cerradas y controles de calidad aprobados.
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+uv sync --frozen --all-packages
+docker compose config
+docker compose up -d --build
+```
 
-## Arquitectura objetivo
+## Common checks
 
-- Desktop: Tauri 2 + React + TypeScript.
-- API: FastAPI + Pydantic + SQLAlchemy.
-- Persistencia: PostgreSQL como única fuente de verdad.
-- Cola y coordinación: Celery + Redis, con patrón outbox en PostgreSQL.
-- Mercado: adaptador Binance USD-M Futures para datos públicos.
-- Tiempo real: WebSocket; recuperación por cursor desde eventos durables.
-- Infraestructura: Docker Compose en desarrollo; VPS Ubuntu + Nginx + HTTPS en producción futura.
+```bash
+pnpm contracts:generate
+pnpm contracts:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy apps packages/python
+uv run pytest
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+curl --fail http://localhost:8000/api/v1/health
+curl --fail http://localhost:8000/api/v1/ready
+docker compose down
+```
 
-La arquitectura completa está en [docs/architecture/SYSTEM_ARCHITECTURE.md](docs/architecture/SYSTEM_ARCHITECTURE.md).
+## Troubleshooting
 
-## Límites no negociables
-
-- No conectar brokers ni exchanges para operar.
-- No almacenar claves privadas de trading.
-- No enviar órdenes reales.
-- No introducir IA operativa durante el MVP.
-- No representar resultados simulados como beneficios reales.
-- No desplegar, comprar servicios ni publicar releases sin aprobación de Gastón.
-
-## Documentación
-
-El índice navegable está en [docs/README.md](docs/README.md). Las decisiones vinculantes están en [DECISIONS.md](DECISIONS.md) y los ADR en [docs/adr](docs/adr).
-
-## Próximo paso
-
-Ejecutar únicamente el paquete **E1-P01 — Scaffolding e infraestructura local**, definido en [docs/CODEX_IMPLEMENTATION_PLAN.md](docs/CODEX_IMPLEMENTATION_PLAN.md). No avanzar a autenticación hasta revisar el diff, ejecutar las verificaciones y actualizar el estado.
-
+- If `pnpm install --frozen-lockfile` fails, confirm Node 24 and pnpm 11 are active.
+- If `uv sync --frozen --all-packages` fails, confirm Python 3.13.14 is installed and selected by uv.
+- If Compose fails, confirm Docker is installed and the host ports in `.env.example` are free.
+- `/api/v1/ready` intentionally returns `503` when PostgreSQL or Redis are unavailable.
