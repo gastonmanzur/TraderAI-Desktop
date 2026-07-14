@@ -1,0 +1,33 @@
+name: ci
+on: [push, pull_request]
+permissions: { contents: read }
+jobs:
+  python-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@e8d4307400f9427dba7cb98e488d6ab85f1cec5f
+      - uses: actions/setup-node@04be95cf3511ea51ebf9f224ddfb99cc7ab87cd4
+        with: { node-version-file: .node-version }
+      - uses: astral-sh/setup-uv@6a191366842ac1502ba6c07e9b5acd5c2d9d8db3
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: uv sync --frozen --all-packages
+      - run: pnpm contracts:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+      - run: uv run ruff format --check . && uv run ruff check . && uv run mypy apps packages/python && uv run pytest
+      - run: bash scripts/check-no-real-trading.sh
+      - run: docker compose config
+  tauri-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@e8d4307400f9427dba7cb98e488d6ab85f1cec5f
+      - uses: actions/setup-node@04be95cf3511ea51ebf9f224ddfb99cc7ab87cd4
+        with: { node-version-file: .node-version }
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: cargo fmt --all --check
+        working-directory: apps/desktop/src-tauri
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+        working-directory: apps/desktop/src-tauri
+      - run: cargo test --workspace
+        working-directory: apps/desktop/src-tauri

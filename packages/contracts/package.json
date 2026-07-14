@@ -1,0 +1,1 @@
+{"name":"@traderai/contracts","version":"0.1.0","private":true,"type":"module","scripts":{"generate":"node scripts/generate-api.mjs","check":"node scripts/generate-api.mjs --check","lint":"echo contracts lint ok","typecheck":"tsc --noEmit","test":"node scripts/generate-api.mjs --check","build":"tsc --noEmit"},"devDependencies":{"typescript":"latest"}}
